@@ -3,8 +3,21 @@
  * Caches search results, repository info, and frequently accessed documents
  */
 
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 import { Logger } from 'pino';
+
+// Narrow client type to the small surface we use to avoid `any` propagation from redis typings
+interface RedisClientLike {
+  on(event: 'error', listener: (err: Error) => void): this;
+  on(event: 'connect', listener: () => void): this;
+  on(event: 'disconnect', listener: () => void): this;
+  connect(): Promise<void>;
+  get(key: string): Promise<string | null>;
+  setEx(key: string, ttl: number, value: string): Promise<void>;
+  del(key: string | string[]): Promise<number>;
+  keys(pattern: string): Promise<string[]>;
+  quit(): Promise<void>;
+}
 
 export interface CacheConfig {
   redisUrl?: string;
@@ -13,7 +26,7 @@ export interface CacheConfig {
 }
 
 export class CacheService {
-  private client: RedisClientType | null = null;
+  private client: RedisClientLike | null = null;
   private logger: Logger;
   private config: CacheConfig;
   private isConnected = false;
@@ -37,7 +50,9 @@ export class CacheService {
     }
 
     try {
-      this.client = createClient({
+      // The redis client factory has loose typings in this environment; accept unknown and narrow below.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const rawClient: unknown = createClient({
         url: this.config.redisUrl,
         socket: {
           connectTimeout: 5000,
@@ -51,8 +66,11 @@ export class CacheService {
         }
       });
 
-      this.client.on('error', (err) => {
-        this.logger.error({ error: err.message }, 'Redis error');
+      // Narrow the surface we rely on to avoid `any` propagation from redis typings
+  this.client = rawClient as RedisClientLike;
+
+      this.client.on('error', (err: Error) => {
+        this.logger.error({ error: { message: err.message, stack: err.stack } }, 'Redis error');
         this.isConnected = false;
       });
 
@@ -68,8 +86,9 @@ export class CacheService {
 
       await this.client.connect();
       this.logger.info('Redis cache initialized successfully');
-    } catch (error) {
-      this.logger.error({ error }, 'Failed to connect to Redis');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
+      this.logger.error({ error: err }, 'Failed to connect to Redis');
       this.client = null;
     }
   }
@@ -91,8 +110,9 @@ export class CacheService {
       const parsed = JSON.parse(value) as T;
       this.logger.debug({ key }, 'Cache hit');
       return parsed;
-    } catch (error) {
-      this.logger.error({ key, error }, 'Cache get failed');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
+      this.logger.error({ key, error: err }, 'Cache get failed');
       return null;
     }
   }
@@ -100,7 +120,7 @@ export class CacheService {
   /**
    * Set cached value with TTL
    */
-  async set(key: string, value: any, ttl?: number): Promise<void> {
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
     if (!this.isConnected || !this.client) {
       return;
     }
@@ -111,8 +131,9 @@ export class CacheService {
       
       await this.client.setEx(key, expiry, serialized);
       this.logger.debug({ key, ttl: expiry }, 'Cache set');
-    } catch (error) {
-      this.logger.error({ key, error }, 'Cache set failed');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
+      this.logger.error({ key, error: err }, 'Cache set failed');
     }
   }
 
@@ -127,8 +148,9 @@ export class CacheService {
     try {
       await this.client.del(key);
       this.logger.debug({ key }, 'Cache deleted');
-    } catch (error) {
-      this.logger.error({ key, error }, 'Cache delete failed');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
+      this.logger.error({ key, error: err }, 'Cache delete failed');
     }
   }
 
@@ -146,8 +168,9 @@ export class CacheService {
         await this.client.del(keys);
         this.logger.debug({ pattern, count: keys.length }, 'Cache pattern deleted');
       }
-    } catch (error) {
-      this.logger.error({ pattern, error }, 'Cache pattern delete failed');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
+      this.logger.error({ pattern, error: err }, 'Cache pattern delete failed');
     }
   }
 
@@ -181,27 +204,29 @@ export class CacheService {
 /**
  * Cache key generators
  */
+type FilterValue = string | number | boolean | null | undefined;
+
 export const CacheKeys = {
-  search: (query: string, filters: Record<string, any> = {}) => {
+  search: (query: string, filters: Record<string, FilterValue> = {}): string => {
     const filterStr = Object.entries(filters)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}:${v}`)
       .join(':');
     return `search:${query}:${filterStr}`;
   },
-  
-  document: (documentId: string) => `doc:${documentId}`,
-  
-  repoInfo: (repository: string) => `repo:${repository}:info`,
-  
-  repoFiles: (repository: string, pattern?: string) => 
+
+  document: (documentId: string): string => `doc:${documentId}`,
+
+  repoInfo: (repository: string): string => `repo:${repository}:info`,
+
+  repoFiles: (repository: string, pattern?: string): string => 
     `repo:${repository}:files:${pattern || 'all'}`,
-  
-  repoStats: (repository: string) => `repo:${repository}:stats`,
-  
-  syncStatus: () => 'sync:status:all',
-  
-  repositories: () => 'repos:list'
+
+  repoStats: (repository: string): string => `repo:${repository}:stats`,
+
+  syncStatus: (): string => 'sync:status:all',
+
+  repositories: (): string => 'repos:list'
 };
 
 /**
