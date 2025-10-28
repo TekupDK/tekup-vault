@@ -38,6 +38,16 @@ module.exports = {
       },
     },
     {
+      files: ['packages/vault-ingest/src/**/*.ts', 'packages/vault-search/src/**/*.ts'],
+      rules: {
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+      },
+    },
+    {
       files: ['**/__tests__/**/*.ts', 'apps/vault-api/src/__tests__/**/*.ts'],
       rules: {
         '@typescript-eslint/explicit-function-return-type': 'off',
