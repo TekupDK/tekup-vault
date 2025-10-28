@@ -209,12 +209,19 @@ importers:
       openai:
         specifier: ^4.24.1
         version: 4.104.0
+      pg:
+        specifier: ^8.12.0
+        version: 8.16.3
       pino:
         specifier: ^8.17.2
         version: 8.21.0
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.15.6
 
 packages:
 

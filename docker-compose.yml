@@ -18,7 +18,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - tekupvault
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: tekupvault-worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tekupvault
+      NODE_ENV: development
+      LOCAL_WORKSPACE_PATH: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tekupvault
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: c:/Users/empir/Tekup
+        target: /workspace
 
 volumes:
   pgdata:
     driver: local
+
+networks:
+  tekupvault:
+    driver: bridge

@@ -1,4 +1,4 @@
-import { EmbeddingService } from '@tekupvault/vault-search';
+import { EmbeddingService, PostgresEmbeddingService } from '@tekupvault/vault-search';
 import { loadConfig } from '@tekupvault/vault-core';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
@@ -19,13 +19,29 @@ export async function indexDocuments(): Promise<void> {
   logger.info('Starting document indexing job');
 
   try {
-    const embeddingService = new EmbeddingService(
-      config.OPENAI_API_KEY,
-      supabase,
-      logger
-    );
+  // Only use Supabase when explicitly enabled; otherwise use direct Postgres via DATABASE_URL
+  const useSupabase = process.env.VAULT_USE_SUPABASE === 'true' && Boolean(config.SUPABASE_URL && (config.SUPABASE_SERVICE_KEY || config.SUPABASE_ANON_KEY));
+    let indexed = 0;
 
-    const indexed = await embeddingService.indexUnindexedDocuments();
+    if (useSupabase) {
+      const svc = new EmbeddingService(
+        config.OPENAI_API_KEY,
+        supabase,
+        logger
+      );
+      indexed = await svc.indexUnindexedDocuments();
+    } else {
+      const svc = new PostgresEmbeddingService(
+        config.OPENAI_API_KEY,
+        config.DATABASE_URL,
+        logger
+      );
+      try {
+        indexed = await svc.indexUnindexedDocuments();
+      } finally {
+        await svc.close();
+      }
+    }
 
     const duration = Date.now() - startTime;
     logger.info({ duration, indexed }, 'Document indexing job completed');

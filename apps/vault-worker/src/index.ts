@@ -1,9 +1,31 @@
-import 'dotenv/config';
-import { loadConfig, SYNC_CONFIG } from '@tekupvault/vault-core';
-import { logger } from './lib/logger';
-import { syncAllGitHubRepos } from './jobs/sync-github';
-import { syncLocalWorkspace } from './jobs/sync-local';
-import { indexDocuments } from './jobs/index-documents';
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from "path";
+import { existsSync } from "fs";
+
+// Load .env from repo root (2 levels up from apps/vault-worker/src)
+dotenvConfig({ path: resolve(__dirname, "../../../.env") });
+
+// Optionally load shared secrets from Tekup secrets repo without overriding existing envs
+function loadOptionalEnv(envPath: string): void {
+  try {
+    if (existsSync(envPath)) {
+      dotenvConfig({ path: envPath, override: false });
+    }
+  } catch {
+    // Best-effort only
+  }
+}
+
+// Known secret files on this workstation
+loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/.env.shared");
+loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/config/ai-services.env");
+loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/config/github.env");
+
+import { loadConfig, SYNC_CONFIG } from "@tekupvault/vault-core";
+import { logger } from "./lib/logger";
+import { syncAllGitHubRepos } from "./jobs/sync-github";
+import { syncLocalWorkspace } from "./jobs/sync-local";
+import { indexDocuments } from "./jobs/index-documents";
 
 const config = loadConfig();
 
@@ -12,24 +34,32 @@ const config = loadConfig();
  */
 async function runJobs(): Promise<void> {
   try {
-    logger.info('Starting worker jobs');
+    logger.info("Starting worker jobs");
 
-    // Sync GitHub repositories
-    await syncAllGitHubRepos();
+    // Sync GitHub repositories (only when explicitly enabled and token present)
+    if (process.env.GITHUB_SYNC_ENABLED === "true") {
+      await syncAllGitHubRepos();
+    } else {
+      logger.info(
+        "GitHub sync disabled (set GITHUB_SYNC_ENABLED=true and provide GITHUB_TOKEN to enable)"
+      );
+    }
 
     // Sync local workspace (if enabled)
-    if (process.env.LOCAL_SYNC_ENABLED === 'true') {
+    if (process.env.LOCAL_SYNC_ENABLED === "true") {
       await syncLocalWorkspace();
     } else {
-      logger.info('Local sync disabled (set LOCAL_SYNC_ENABLED=true to enable)');
+      logger.info(
+        "Local sync disabled (set LOCAL_SYNC_ENABLED=true to enable)"
+      );
     }
 
     // Index unindexed documents
     await indexDocuments();
 
-    logger.info('All worker jobs completed');
+    logger.info("All worker jobs completed");
   } catch (error) {
-    logger.error({ error }, 'Worker jobs failed');
+    logger.error({ error }, "Worker jobs failed");
   }
 }
 
@@ -38,10 +68,13 @@ async function runJobs(): Promise<void> {
  */
 function scheduleJobs(): void {
   const intervalMs = SYNC_CONFIG.intervalHours * 60 * 60 * 1000;
-  
-  logger.info({ 
-    intervalHours: SYNC_CONFIG.intervalHours 
-  }, 'Scheduling recurring jobs');
+
+  logger.info(
+    {
+      intervalHours: SYNC_CONFIG.intervalHours,
+    },
+    "Scheduling recurring jobs"
+  );
 
   setInterval(() => {
     void runJobs();
@@ -52,10 +85,13 @@ function scheduleJobs(): void {
  * Main entry point
  */
 async function main(): Promise<void> {
-  logger.info({ 
-    env: config.NODE_ENV,
-    intervalHours: SYNC_CONFIG.intervalHours 
-  }, 'Vault Worker starting');
+  logger.info(
+    {
+      env: config.NODE_ENV,
+      intervalHours: SYNC_CONFIG.intervalHours,
+    },
+    "Vault Worker starting"
+  );
 
   // Run jobs immediately on startup
   await runJobs();
@@ -63,23 +99,23 @@ async function main(): Promise<void> {
   // Schedule recurring jobs
   scheduleJobs();
 
-  logger.info('Vault Worker started successfully');
+  logger.info("Vault Worker started successfully");
 }
 
 // Handle shutdown gracefully
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received, shutting down gracefully");
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
+process.on("SIGINT", () => {
+  logger.info("SIGINT received, shutting down gracefully");
   process.exit(0);
 });
 
 // Start the worker
 main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  logger.error({ error: message }, 'Fatal error in worker');
+  logger.error({ error: message }, "Fatal error in worker");
   process.exit(1);
 });
