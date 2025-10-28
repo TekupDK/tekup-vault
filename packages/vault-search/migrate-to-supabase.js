@@ -6,24 +6,34 @@
 
 const { Pool } = require('pg');
 
-// Source: Local Docker PostgreSQL
-const sourcePool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'tekupvault',
-  user: 'postgres',
-  password: 'postgres',
-});
+// Prefer connection strings from env to avoid hardcoded credentials.
+// Usage:
+//   SOURCE_DB_URL=postgresql://user:pass@localhost:5432/tekupvault \
+//   TARGET_DB_URL=postgresql://postgres:pass@db.<ref>.supabase.co:5432/postgres \
+//   node packages/vault-search/migrate-to-supabase.js
 
-// Target: Supabase "Tekup Database" Pro (Direct connection with IPv4)
-const targetPool = new Pool({
-  host: 'db.oaevagdgrasfppbrxbey.supabase.co',
-  port: 5432,
-  database: 'postgres',
-  user: 'postgres',
-  password: 'tfXJPxcQYElxUfqC',
-  ssl: { rejectUnauthorized: false },
-});
+function makePoolFromEnv(varName, fallback) {
+  const url = process.env[varName] || fallback;
+  if (!url) {
+    throw new Error(`Missing required env var ${varName}`);
+  }
+  // Supabase requires SSL. pg enables it automatically for connectionString when ?sslmode=require
+  // To be safe, pass ssl for non-local hosts.
+  const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
+  return new Pool({ connectionString: url, ssl: isLocal ? false : { rejectUnauthorized: false } });
+}
+
+// Source: Local Docker PostgreSQL (can be overridden via SOURCE_DB_URL)
+const sourcePool = makePoolFromEnv(
+  'SOURCE_DB_URL',
+  'postgresql://postgres:postgres@localhost:5432/tekupvault'
+);
+
+// Target: Supabase "Tekup Database" Pro (provide TARGET_DB_URL)
+const targetPool = makePoolFromEnv(
+  'TARGET_DB_URL',
+  process.env.DATABASE_URL || ''
+);
 
 async function migrate() {
   console.log('🚀 Starting TekupVault data migration...\n');

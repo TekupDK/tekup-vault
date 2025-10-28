@@ -105,7 +105,21 @@ pnpm dev
 
 ### Environment Variables
 
-See `.env.example` (or `docs/ENV.example`) for all required variables:
+#### Secrets Management (tekup-secrets)
+
+This workspace uses a central secrets repo: `../../tekup-secrets`.
+
+- Preferred file: `tekup-secrets/.env.shared`
+- API and Worker will automatically try to load it (and will not override existing env values)
+- You can still use a local `.env` in this repo as a fallback
+
+Local development options:
+
+- Run API: `pnpm --filter @tekupvault/vault-api dev` (auto-loads tekup-secrets if present)
+- Run Worker: `pnpm --filter @tekupvault/vault-worker dev` (auto-loads tekup-secrets)
+- Alternative: `pnpm --filter @tekupvault/vault-api run dev:shared` to force using tekup-secrets only
+
+See `.env.example` for variable names. Prefer setting them in `tekup-secrets/.env.shared`.
 
 ```bash
 # Database (Supabase or local)

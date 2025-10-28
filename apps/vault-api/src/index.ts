@@ -1,4 +1,21 @@
-import 'dotenv/config';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+import { existsSync } from 'fs';
+
+// Load env: prefer repo root .env, then optionally tekup-secrets shared files (without overriding existing values)
+dotenvConfig({ path: resolve(__dirname, '../../../.env') });
+function loadOptionalEnv(envPath: string): void {
+  try {
+    if (existsSync(envPath)) {
+      dotenvConfig({ path: envPath, override: false });
+    }
+  } catch {
+    // best-effort only
+  }
+}
+loadOptionalEnv('c:/Users/empir/Tekup/tekup-secrets/.env.shared');
+loadOptionalEnv('c:/Users/empir/Tekup/tekup-secrets/config/ai-services.env');
+loadOptionalEnv('c:/Users/empir/Tekup/tekup-secrets/config/github.env');
 import * as Sentry from '@sentry/node';
 import express from 'express';
 import helmet from 'helmet';
