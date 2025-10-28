@@ -38,7 +38,11 @@ module.exports = {
       },
     },
     {
-      files: ['packages/vault-ingest/src/**/*.ts', 'packages/vault-search/src/**/*.ts'],
+      files: [
+        'packages/vault-ingest/src/**/*.ts',
+        'packages/vault-search/src/**/*.ts',
+        'apps/vault-worker/src/**/*.ts'
+      ],
       rules: {
         '@typescript-eslint/no-unsafe-assignment': 'off',
         '@typescript-eslint/no-unsafe-member-access': 'off',
