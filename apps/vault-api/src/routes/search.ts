@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
-import { EmbeddingService } from '@tekupvault/vault-search';
+import { EmbeddingService, PostgresEmbeddingService } from '@tekupvault/vault-search';
 import { SearchQuerySchema, loadConfig } from '@tekupvault/vault-core';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
@@ -9,11 +9,21 @@ import { requireApiKey } from '../middleware/auth';
 const router: RouterType = Router();
 const config = loadConfig();
 
-const embeddingService = new EmbeddingService(
-  config.OPENAI_API_KEY || 'placeholder_key',
-  supabase,
-  logger
-);
+function getEmbeddingService() {
+  const useSupabase = process.env.VAULT_USE_SUPABASE === 'true' && Boolean(config.SUPABASE_URL && (config.SUPABASE_SERVICE_KEY || config.SUPABASE_ANON_KEY));
+  if (useSupabase) {
+    return new EmbeddingService(
+      config.OPENAI_API_KEY || 'placeholder_key',
+      supabase,
+      logger
+    );
+  }
+  return new PostgresEmbeddingService(
+    config.OPENAI_API_KEY || 'placeholder_key',
+    config.DATABASE_URL,
+    logger
+  );
+}
 
 /**
  * POST /api/search
@@ -25,7 +35,8 @@ router.post('/search', requireApiKey, async (req: Request, res: Response) => {
     const query = SearchQuerySchema.parse(req.body);
 
     // Perform search
-    const results = await embeddingService.search(query.query, {
+    const svc = getEmbeddingService();
+    const results = await svc.search(query.query, {
       limit: query.limit,
       threshold: query.threshold,
       source: query.source,
