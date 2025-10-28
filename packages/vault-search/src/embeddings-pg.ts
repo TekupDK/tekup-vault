@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
-import { Pool } from 'pg';
-import { Logger } from 'pino';
-import { EMBEDDING_CONFIG } from '@tekupvault/vault-core';
+import { EMBEDDING_CONFIG } from "@tekupvault/vault-core";
+import OpenAI from "openai";
+import { Pool } from "pg";
+import { Logger } from "pino";
 
 export class PostgresEmbeddingService {
   private openai: OpenAI;
@@ -23,7 +23,10 @@ export class PostgresEmbeddingService {
    */
   async indexDocument(documentId: string, content: string): Promise<void> {
     try {
-      const truncated = content.slice(0, EMBEDDING_CONFIG.maxCharsBeforeTruncation);
+      const truncated = content.slice(
+        0,
+        EMBEDDING_CONFIG.maxCharsBeforeTruncation
+      );
       const embedding = await this.generateEmbedding(truncated);
 
       const query = `
@@ -34,9 +37,9 @@ export class PostgresEmbeddingService {
       `;
 
       await this.pool.query(query, [documentId, embedding]);
-      this.logger.debug({ documentId }, 'Document indexed successfully (pg)');
+      this.logger.debug({ documentId }, "Document indexed successfully (pg)");
     } catch (error) {
-      this.logger.error({ documentId, error }, 'Failed to index document (pg)');
+      this.logger.error({ documentId, error }, "Failed to index document (pg)");
       throw error;
     }
   }
@@ -45,7 +48,7 @@ export class PostgresEmbeddingService {
     const response = await this.openai.embeddings.create({
       model: EMBEDDING_CONFIG.model,
       input: text,
-      dimensions: EMBEDDING_CONFIG.dimensions
+      dimensions: EMBEDDING_CONFIG.dimensions,
     });
     return response.data[0].embedding;
   }
@@ -54,22 +57,29 @@ export class PostgresEmbeddingService {
    * Format embedding array as Postgres vector literal
    */
   private formatVectorLiteral(embedding: number[]): string {
-    return `[${embedding.join(',')}]`;
+    return `[${embedding.join(",")}]`;
   }
 
   async search(
     query: string,
-    options: { limit?: number; threshold?: number; source?: string; repository?: string } = {}
-  ): Promise<Array<{
-    id: string;
-    source: string;
-    repository: string;
-    path: string;
-    content: string;
-    metadata: Record<string, unknown> | null;
-    sha: string | null;
-    similarity: number;
-  }>> {
+    options: {
+      limit?: number;
+      threshold?: number;
+      source?: string;
+      repository?: string;
+    } = {}
+  ): Promise<
+    Array<{
+      id: string;
+      source: string;
+      repository: string;
+      path: string;
+      content: string;
+      metadata: Record<string, unknown> | null;
+      sha: string | null;
+      similarity: number;
+    }>
+  > {
     const { limit = 10, threshold = 0.7, source, repository } = options;
     const queryEmbedding = await this.generateEmbedding(query);
 
@@ -87,8 +97,17 @@ export class PostgresEmbeddingService {
       sha: string | null;
       similarity: number | string;
     };
-    const { rows } = await this.pool.query<SearchRow>(sql, [`[${queryEmbedding.join(',')}]`, threshold, limit, source ?? null, repository ?? null]);
-    this.logger.info({ query: query.slice(0, 50), resultsCount: rows.length }, 'Search completed (pg)');
+    const { rows } = await this.pool.query<SearchRow>(sql, [
+      `[${queryEmbedding.join(",")}]`,
+      threshold,
+      limit,
+      source ?? null,
+      repository ?? null,
+    ]);
+    this.logger.info(
+      { query: query.slice(0, 50), resultsCount: rows.length },
+      "Search completed (pg)"
+    );
     return rows.map((r: SearchRow) => ({
       id: r.id,
       source: r.source,
@@ -97,7 +116,7 @@ export class PostgresEmbeddingService {
       content: r.content,
       metadata: r.metadata,
       sha: r.sha,
-      similarity: Number(r.similarity)
+      similarity: Number(r.similarity),
     }));
   }
 
@@ -114,13 +133,18 @@ export class PostgresEmbeddingService {
       LIMIT 100;
     `;
 
-    const { rows } = await this.pool.query<{ id: string; content: string }>(selectSql);
+    const { rows } = await this.pool.query<{ id: string; content: string }>(
+      selectSql
+    );
     if (rows.length === 0) {
-      this.logger.info('No unindexed documents found (pg)');
+      this.logger.info("No unindexed documents found (pg)");
       return 0;
     }
 
-    this.logger.info({ count: rows.length }, 'Indexing unindexed documents (pg)');
+    this.logger.info(
+      { count: rows.length },
+      "Indexing unindexed documents (pg)"
+    );
     let indexed = 0;
     const batchSize = 10;
     for (let i = 0; i < rows.length; i += batchSize) {
@@ -129,7 +153,9 @@ export class PostgresEmbeddingService {
         const embeddings = await Promise.all(
           batch.map(async (doc: { id: string; content: string }) => ({
             id: doc.id,
-            embedding: await this.generateEmbedding(doc.content.slice(0, EMBEDDING_CONFIG.maxCharsBeforeTruncation))
+            embedding: await this.generateEmbedding(
+              doc.content.slice(0, EMBEDDING_CONFIG.maxCharsBeforeTruncation)
+            ),
           }))
         );
 
@@ -140,17 +166,23 @@ export class PostgresEmbeddingService {
             VALUES ($1, $2::vector(1536), NOW())
             ON CONFLICT (document_id) DO UPDATE SET embedding = EXCLUDED.embedding, updated_at = EXCLUDED.updated_at;
           `;
-          await this.pool.query(insertSql, [emb.id, this.formatVectorLiteral(emb.embedding)]);
+          await this.pool.query(insertSql, [
+            emb.id,
+            this.formatVectorLiteral(emb.embedding),
+          ]);
         }
-        
+
         indexed += batch.length;
-        this.logger.debug({ batchIndexed: batch.length, totalIndexed: indexed }, 'Batch indexed (pg)');
+        this.logger.debug(
+          { batchIndexed: batch.length, totalIndexed: indexed },
+          "Batch indexed (pg)"
+        );
       } catch (error) {
-        this.logger.error({ error }, 'Failed to index batch (pg)');
+        this.logger.error({ error }, "Failed to index batch (pg)");
       }
     }
 
-    this.logger.info({ indexed }, 'Finished indexing unindexed documents (pg)');
+    this.logger.info({ indexed }, "Finished indexing unindexed documents (pg)");
     return indexed;
   }
 }

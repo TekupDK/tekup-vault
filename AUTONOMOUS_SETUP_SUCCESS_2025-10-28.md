@@ -22,7 +22,7 @@ TekupVault er nu **100% operationel** med følgende capabilities:
 
 ```bash
 docker exec -i tekupvault-postgres psql -U postgres -d tekupvault -c "
-  SELECT 
+  SELECT
     (SELECT COUNT(*) FROM vault_documents) as docs,
     (SELECT COUNT(*) FROM vault_embeddings) as embeddings,
     (SELECT COUNT(DISTINCT repository) FROM vault_documents) as repos;
@@ -54,19 +54,22 @@ Original TekupVault design required Supabase for embeddings, but:
 ```typescript
 // NEW: packages/vault-search/src/embeddings-pg.ts
 class PostgresEmbeddingService {
-  private pool: Pool;  // node-postgres direct connection
-  
+  private pool: Pool; // node-postgres direct connection
+
   async indexDocument(id: string, content: string) {
     const embedding = await this.generateEmbedding(content);
-    await this.pool.query(`
+    await this.pool.query(
+      `
       INSERT INTO vault_embeddings (document_id, embedding, updated_at)
       VALUES ($1, $2::vector(1536), NOW())
       ON CONFLICT (document_id) DO UPDATE...
-    `, [id, this.formatVectorLiteral(embedding)]);
+    `,
+      [id, this.formatVectorLiteral(embedding)]
+    );
   }
-  
+
   private formatVectorLiteral(emb: number[]): string {
-    return `[${emb.join(',')}]`;  // PostgreSQL vector literal format
+    return `[${emb.join(",")}]`; // PostgreSQL vector literal format
   }
 }
 ```
@@ -124,13 +127,13 @@ class PostgresEmbeddingService {
 ```bash
 # Direct SQL query in PostgreSQL:
 docker exec -i tekupvault-postgres psql -U postgres -d tekupvault -c "
-  SELECT 
-    d.path, 
+  SELECT
+    d.path,
     (1 - (e.embedding <=> (
-      SELECT embedding 
-      FROM vault_embeddings 
+      SELECT embedding
+      FROM vault_embeddings
       WHERE document_id = (
-        SELECT id FROM vault_documents 
+        SELECT id FROM vault_documents
         WHERE path LIKE '%Billy%' LIMIT 1
       )
     ))) as similarity
@@ -149,7 +152,7 @@ docker logs -f tekupvault-worker
 
 # Check embedding generation progress:
 docker exec -i tekupvault-postgres psql -U postgres -d tekupvault -c "
-  SELECT 
+  SELECT
     COUNT(*) FILTER (WHERE e.id IS NOT NULL) as indexed,
     COUNT(*) FILTER (WHERE e.id IS NULL) as pending,
     COUNT(*) as total
@@ -252,15 +255,15 @@ Worker runs every 6 hours and automatically:
 
 ## 📈 Performance Benchmarks
 
-| Metric                       | Value               | Notes                          |
-| ---------------------------- | ------------------- | ------------------------------ |
-| **Local Sync Speed**         | ~5s for 365 files   | Filesystem read + DB insert    |
-| **Embedding Generation**     | ~9s per 100 docs    | OpenAI API + batch processing  |
-| **Vector Search**            | <10ms per query     | PostgreSQL pgvector IVFFlat    |
-| **Database Size**            | ~5MB (200 vectors)  | Will grow to ~20MB at 1000 docs|
-| **Worker Memory**            | ~120MB              | Node.js 18 in Alpine container |
-| **Postgres Memory**          | ~50MB idle          | Lightweight pgvector extension |
-| **Docker Disk**              | ~1.2GB total        | Both containers combined       |
+| Metric                   | Value              | Notes                           |
+| ------------------------ | ------------------ | ------------------------------- |
+| **Local Sync Speed**     | ~5s for 365 files  | Filesystem read + DB insert     |
+| **Embedding Generation** | ~9s per 100 docs   | OpenAI API + batch processing   |
+| **Vector Search**        | <10ms per query    | PostgreSQL pgvector IVFFlat     |
+| **Database Size**        | ~5MB (200 vectors) | Will grow to ~20MB at 1000 docs |
+| **Worker Memory**        | ~120MB             | Node.js 18 in Alpine container  |
+| **Postgres Memory**      | ~50MB idle         | Lightweight pgvector extension  |
+| **Docker Disk**          | ~1.2GB total       | Both containers combined        |
 
 ---
 
@@ -317,7 +320,7 @@ docker-compose build --build-arg CACHE_BUST=$(date +%s) worker
 **Solution:** Format as PostgreSQL literal then cast:
 
 ```sql
-INSERT INTO vault_embeddings (embedding) 
+INSERT INTO vault_embeddings (embedding)
 VALUES ('[0.123,0.456,...]'::vector(1536));
 ```
 
@@ -329,12 +332,12 @@ VALUES ('[0.123,0.456,...]'::vector(1536));
 
 ```typescript
 // Load root .env first (highest priority)
-dotenvConfig({ path: resolve(__dirname, '../../../.env') });
+dotenvConfig({ path: resolve(__dirname, "../../../.env") });
 
 // Then load secrets without override
-dotenvConfig({ 
-  path: 'c:/Users/empir/Tekup/tekup-secrets/.env.shared',
-  override: false  // ← Key insight
+dotenvConfig({
+  path: "c:/Users/empir/Tekup/tekup-secrets/.env.shared",
+  override: false, // ← Key insight
 });
 ```
 

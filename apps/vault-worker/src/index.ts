@@ -1,6 +1,6 @@
 import { config as dotenvConfig } from "dotenv";
-import { resolve } from "path";
 import { existsSync } from "fs";
+import { resolve } from "path";
 
 // Load .env from repo root (2 levels up from apps/vault-worker/src)
 dotenvConfig({ path: resolve(__dirname, "../../../.env") });
@@ -22,10 +22,10 @@ loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/config/ai-services.env");
 loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/config/github.env");
 
 import { loadConfig, SYNC_CONFIG } from "@tekupvault/vault-core";
-import { logger } from "./lib/logger";
+import { indexDocuments } from "./jobs/index-documents";
 import { syncAllGitHubRepos } from "./jobs/sync-github";
 import { syncLocalWorkspace } from "./jobs/sync-local";
-import { indexDocuments } from "./jobs/index-documents";
+import { logger } from "./lib/logger";
 
 const config = loadConfig();
 

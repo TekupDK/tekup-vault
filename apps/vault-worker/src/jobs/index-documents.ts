@@ -1,7 +1,10 @@
-import { EmbeddingService, PostgresEmbeddingService } from '@tekupvault/vault-search';
-import { loadConfig } from '@tekupvault/vault-core';
-import { supabase } from '../lib/supabase';
-import { logger } from '../lib/logger';
+import { loadConfig } from "@tekupvault/vault-core";
+import {
+  EmbeddingService,
+  PostgresEmbeddingService,
+} from "@tekupvault/vault-search";
+import { logger } from "../lib/logger";
+import { supabase } from "../lib/supabase";
 
 const config = loadConfig();
 
@@ -11,24 +14,25 @@ const config = loadConfig();
 export async function indexDocuments(): Promise<void> {
   // Skip indexing if OpenAI API key not configured
   if (!config.OPENAI_API_KEY) {
-    logger.info('Document indexing skipped (OPENAI_API_KEY not configured)');
+    logger.info("Document indexing skipped (OPENAI_API_KEY not configured)");
     return;
   }
 
   const startTime = Date.now();
-  logger.info('Starting document indexing job');
+  logger.info("Starting document indexing job");
 
   try {
-  // Only use Supabase when explicitly enabled; otherwise use direct Postgres via DATABASE_URL
-  const useSupabase = process.env.VAULT_USE_SUPABASE === 'true' && Boolean(config.SUPABASE_URL && (config.SUPABASE_SERVICE_KEY || config.SUPABASE_ANON_KEY));
+    // Only use Supabase when explicitly enabled; otherwise use direct Postgres via DATABASE_URL
+    const useSupabase =
+      process.env.VAULT_USE_SUPABASE === "true" &&
+      Boolean(
+        config.SUPABASE_URL &&
+          (config.SUPABASE_SERVICE_KEY || config.SUPABASE_ANON_KEY)
+      );
     let indexed = 0;
 
     if (useSupabase) {
-      const svc = new EmbeddingService(
-        config.OPENAI_API_KEY,
-        supabase,
-        logger
-      );
+      const svc = new EmbeddingService(config.OPENAI_API_KEY, supabase, logger);
       indexed = await svc.indexUnindexedDocuments();
     } else {
       const svc = new PostgresEmbeddingService(
@@ -44,9 +48,9 @@ export async function indexDocuments(): Promise<void> {
     }
 
     const duration = Date.now() - startTime;
-    logger.info({ duration, indexed }, 'Document indexing job completed');
+    logger.info({ duration, indexed }, "Document indexing job completed");
   } catch (error) {
-    logger.error({ error }, 'Document indexing job failed');
+    logger.error({ error }, "Document indexing job failed");
     throw error;
   }
 }

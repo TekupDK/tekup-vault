@@ -41,3 +41,7 @@ coverage/
 .cache/
 temp/
 tmp/
+
+vault_data_*.sql
+vault_documents.csv
+tools/

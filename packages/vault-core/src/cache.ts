@@ -3,14 +3,14 @@
  * Caches search results, repository info, and frequently accessed documents
  */
 
-import { createClient } from 'redis';
-import { Logger } from 'pino';
+import { Logger } from "pino";
+import { createClient } from "redis";
 
 // Narrow client type to the small surface we use to avoid `any` propagation from redis typings
 interface RedisClientLike {
-  on(event: 'error', listener: (err: Error) => void): this;
-  on(event: 'connect', listener: () => void): this;
-  on(event: 'disconnect', listener: () => void): this;
+  on(event: "error", listener: (err: Error) => void): this;
+  on(event: "connect", listener: () => void): this;
+  on(event: "disconnect", listener: () => void): this;
   connect(): Promise<void>;
   get(key: string): Promise<string | null>;
   setEx(key: string, ttl: number, value: string): Promise<void>;
@@ -35,7 +35,7 @@ export class CacheService {
     this.config = {
       defaultTTL: 300, // 5 minutes default
       enabled: true,
-      ...config
+      ...config,
     };
     this.logger = logger;
   }
@@ -45,7 +45,7 @@ export class CacheService {
    */
   async connect(): Promise<void> {
     if (!this.config.enabled || !this.config.redisUrl) {
-      this.logger.info('Redis caching disabled (no REDIS_URL)');
+      this.logger.info("Redis caching disabled (no REDIS_URL)");
       return;
     }
 
@@ -58,37 +58,43 @@ export class CacheService {
           connectTimeout: 5000,
           reconnectStrategy: (retries) => {
             if (retries > 10) {
-              this.logger.error('Redis max retries exceeded');
-              return new Error('Redis unavailable');
+              this.logger.error("Redis max retries exceeded");
+              return new Error("Redis unavailable");
             }
             return Math.min(retries * 100, 3000);
-          }
-        }
+          },
+        },
       });
 
       // Narrow the surface we rely on to avoid `any` propagation from redis typings
-  this.client = rawClient as RedisClientLike;
+      this.client = rawClient as RedisClientLike;
 
-      this.client.on('error', (err: Error) => {
-        this.logger.error({ error: { message: err.message, stack: err.stack } }, 'Redis error');
+      this.client.on("error", (err: Error) => {
+        this.logger.error(
+          { error: { message: err.message, stack: err.stack } },
+          "Redis error"
+        );
         this.isConnected = false;
       });
 
-      this.client.on('connect', () => {
-        this.logger.info('Redis connected');
+      this.client.on("connect", () => {
+        this.logger.info("Redis connected");
         this.isConnected = true;
       });
 
-      this.client.on('disconnect', () => {
-        this.logger.warn('Redis disconnected');
+      this.client.on("disconnect", () => {
+        this.logger.warn("Redis disconnected");
         this.isConnected = false;
       });
 
       await this.client.connect();
-      this.logger.info('Redis cache initialized successfully');
+      this.logger.info("Redis cache initialized successfully");
     } catch (error: unknown) {
-      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
-      this.logger.error({ error: err }, 'Failed to connect to Redis');
+      const err =
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { message: String(error) };
+      this.logger.error({ error: err }, "Failed to connect to Redis");
       this.client = null;
     }
   }
@@ -108,11 +114,14 @@ export class CacheService {
       }
 
       const parsed = JSON.parse(value) as T;
-      this.logger.debug({ key }, 'Cache hit');
+      this.logger.debug({ key }, "Cache hit");
       return parsed;
     } catch (error: unknown) {
-      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
-      this.logger.error({ key, error: err }, 'Cache get failed');
+      const err =
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { message: String(error) };
+      this.logger.error({ key, error: err }, "Cache get failed");
       return null;
     }
   }
@@ -128,12 +137,15 @@ export class CacheService {
     try {
       const serialized = JSON.stringify(value);
       const expiry = ttl || this.config.defaultTTL || 300;
-      
+
       await this.client.setEx(key, expiry, serialized);
-      this.logger.debug({ key, ttl: expiry }, 'Cache set');
+      this.logger.debug({ key, ttl: expiry }, "Cache set");
     } catch (error: unknown) {
-      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
-      this.logger.error({ key, error: err }, 'Cache set failed');
+      const err =
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { message: String(error) };
+      this.logger.error({ key, error: err }, "Cache set failed");
     }
   }
 
@@ -147,10 +159,13 @@ export class CacheService {
 
     try {
       await this.client.del(key);
-      this.logger.debug({ key }, 'Cache deleted');
+      this.logger.debug({ key }, "Cache deleted");
     } catch (error: unknown) {
-      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
-      this.logger.error({ key, error: err }, 'Cache delete failed');
+      const err =
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { message: String(error) };
+      this.logger.error({ key, error: err }, "Cache delete failed");
     }
   }
 
@@ -166,11 +181,17 @@ export class CacheService {
       const keys = await this.client.keys(pattern);
       if (keys.length > 0) {
         await this.client.del(keys);
-        this.logger.debug({ pattern, count: keys.length }, 'Cache pattern deleted');
+        this.logger.debug(
+          { pattern, count: keys.length },
+          "Cache pattern deleted"
+        );
       }
     } catch (error: unknown) {
-      const err = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
-      this.logger.error({ pattern, error: err }, 'Cache pattern delete failed');
+      const err =
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { message: String(error) };
+      this.logger.error({ pattern, error: err }, "Cache pattern delete failed");
     }
   }
 
@@ -180,7 +201,7 @@ export class CacheService {
   async invalidateRepository(repository: string): Promise<void> {
     await this.delPattern(`repo:${repository}:*`);
     await this.delPattern(`search:*:${repository}:*`);
-    this.logger.info({ repository }, 'Repository cache invalidated');
+    this.logger.info({ repository }, "Repository cache invalidated");
   }
 
   /**
@@ -189,7 +210,7 @@ export class CacheService {
   async disconnect(): Promise<void> {
     if (this.client) {
       await this.client.quit();
-      this.logger.info('Redis disconnected');
+      this.logger.info("Redis disconnected");
     }
   }
 
@@ -207,11 +228,14 @@ export class CacheService {
 type FilterValue = string | number | boolean | null | undefined;
 
 export const CacheKeys = {
-  search: (query: string, filters: Record<string, FilterValue> = {}): string => {
+  search: (
+    query: string,
+    filters: Record<string, FilterValue> = {}
+  ): string => {
     const filterStr = Object.entries(filters)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}:${v}`)
-      .join(':');
+      .join(":");
     return `search:${query}:${filterStr}`;
   },
 
@@ -219,25 +243,25 @@ export const CacheKeys = {
 
   repoInfo: (repository: string): string => `repo:${repository}:info`,
 
-  repoFiles: (repository: string, pattern?: string): string => 
-    `repo:${repository}:files:${pattern || 'all'}`,
+  repoFiles: (repository: string, pattern?: string): string =>
+    `repo:${repository}:files:${pattern || "all"}`,
 
   repoStats: (repository: string): string => `repo:${repository}:stats`,
 
-  syncStatus: (): string => 'sync:status:all',
+  syncStatus: (): string => "sync:status:all",
 
-  repositories: (): string => 'repos:list'
+  repositories: (): string => "repos:list",
 };
 
 /**
  * Cache TTL constants (in seconds)
  */
 export const CacheTTL = {
-  SEARCH: 300,        // 5 minutes
-  DOCUMENT: 3600,     // 1 hour
-  REPO_INFO: 600,     // 10 minutes
-  REPO_FILES: 600,    // 10 minutes
-  REPO_STATS: 1800,   // 30 minutes
-  SYNC_STATUS: 60,    // 1 minute
-  REPOSITORIES: 1800  // 30 minutes
+  SEARCH: 300, // 5 minutes
+  DOCUMENT: 3600, // 1 hour
+  REPO_INFO: 600, // 10 minutes
+  REPO_FILES: 600, // 10 minutes
+  REPO_STATS: 1800, // 30 minutes
+  SYNC_STATUS: 60, // 1 minute
+  REPOSITORIES: 1800, // 30 minutes
 };

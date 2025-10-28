@@ -1,2 +1,2 @@
-export * from './embeddings';
-export * from './embeddings-pg';
+export * from "./embeddings";
+export * from "./embeddings-pg";

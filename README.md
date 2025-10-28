@@ -23,16 +23,19 @@ TekupVault is a monorepo that automatically consolidates, indexes, and enables s
 TekupVault integrates with **14 active Tekup Portfolio repositories**, organized in 3 priority tiers:
 
 ### 🎯 **Tier 1: Core Production Systems** (4 repos)
+
 - **[Tekup-Billy](https://github.com/JonasAbde/Tekup-Billy)**: Billy.dk MCP Server - HTTP REST API for AI agents
 - **[renos-backend](https://github.com/JonasAbde/renos-backend)**: RenOS Backend API - TypeScript + Node 18 + Prisma
 - **[renos-frontend](https://github.com/JonasAbde/renos-frontend)**: RenOS Frontend - React 18 + TypeScript + Vite
 - **[TekupVault](https://github.com/JonasAbde/TekupVault)**: Central Knowledge Layer (self-indexing)
 
 ### 📚 **Tier 2: Documentation & Configuration** (2 repos)
+
 - **[tekup-unified-docs](https://github.com/JonasAbde/tekup-unified-docs)**: Unified documentation across all Tekup projects
 - **[tekup-ai-assistant](https://github.com/JonasAbde/tekup-ai-assistant)**: AI assistant integration - docs, configs & guides
 
 ### 🚧 **Tier 3: Active Development** (8 repos)
+
 - **[tekup-cloud-dashboard](https://github.com/JonasAbde/tekup-cloud-dashboard)**: Cloud dashboard (Vue/React)
 - **[tekup-renos](https://github.com/JonasAbde/tekup-renos)**: RenOS main system - Gmail/Calendar AI automation
 - **[tekup-renos-dashboard](https://github.com/JonasAbde/tekup-renos-dashboard)**: RenOS dashboard - Glassmorphism UI/UX
@@ -163,6 +166,7 @@ curl -X POST http://localhost:3000/api/search \
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -191,11 +195,13 @@ curl http://localhost:3000/health
 ## 🔄 GitHub Sync
 
 The worker automatically syncs these repositories every 6 hours:
+
 - `JonasAbde/renos-backend`
 - `JonasAbde/renos-frontend`
 - `JonasAbde/Tekup-Billy`
 
 **What gets synced:**
+
 - ✅ All text files (`.ts`, `.tsx`, `.js`, `.jsx`, `.md`, `.json`, etc.)
 - ❌ Binary files (images, PDFs, fonts, videos, etc.)
 
@@ -204,14 +210,17 @@ The worker automatically syncs these repositories every 6 hours:
 ### Tables
 
 **vault_documents**: Stores ingested content
+
 - `id`, `source`, `repository`, `path`, `content`, `metadata`, `sha`
 - Unique constraint: `(source, repository, path)`
 
 **vault_embeddings**: Stores OpenAI embeddings
+
 - `id`, `document_id`, `embedding` (VECTOR(1536))
 - IVFFlat index for fast similarity search
 
 **vault_sync_status**: Tracks sync health
+
 - `id`, `source`, `repository`, `status`, `last_sync_at`, `error_message`
 
 ### Functions
@@ -314,11 +323,13 @@ node dist/index.js
 ## 📊 Monitoring
 
 ### Check Sync Status
+
 ```bash
 curl http://localhost:3000/api/sync-status
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -336,6 +347,7 @@ Response:
 ```
 
 View logs:
+
 ```bash
 # API logs
 docker logs tekupvault-api -f
@@ -347,6 +359,7 @@ docker logs tekupvault-worker -f
 ## 🗺️ Roadmap
 
 ### Phase 1 ✅ Completed
+
 - [x] GitHub sync (3 Tekup repos)
 - [x] OpenAI embeddings + pgvector search
 - [x] REST API + webhook endpoint
@@ -359,6 +372,7 @@ docker logs tekupvault-worker -f
 - [x] Vitest test suite
 
 ### Phase 2 ✅ Completed
+
 - [x] Row Level Security (RLS) policies in Supabase
 - [x] Enhanced input validation with Zod
 - [x] Sentry error tracking integration
@@ -366,6 +380,7 @@ docker logs tekupvault-worker -f
 - [x] Batch embedding upserts (10x faster)
 
 ### Phase 3 ✅ Completed
+
 - [x] MCP server for direct Copilot integration
   - MCP HTTP Transport (2025-03-26 spec)
   - **6 MCP tools total**:
@@ -376,6 +391,7 @@ docker logs tekupvault-worker -f
   - Integration examples (ChatGPT, Claude, Cursor)
 
 ### Phase 4 (Planned) 🔜
+
 - [ ] Supabase schema introspection
 - [ ] Render deployment log ingestion
 - [ ] Web UI (React + Tailwind)
@@ -400,6 +416,7 @@ TekupVault is already migrated to Supabase and ready to be part of a central dat
 **[→ GitHub Migration Resources](../GITHUB_MIGRATION_RESOURCES.md)** - Tools and best practices
 
 **TekupVault's role:**
+
 - Already on Supabase PostgreSQL + pgvector
 - Production-ready schema and migrations
 - Reference implementation for other apps
@@ -407,7 +424,7 @@ TekupVault is already migrated to Supabase and ready to be part of a central dat
 
 ## Related Projects
 
-- [renos-backend](https://github.com/JonasAbde/renos-backend): TypeScript backend with Prisma 
+- [renos-backend](https://github.com/JonasAbde/renos-backend): TypeScript backend with Prisma
 - [renos-frontend](https://github.com/JonasAbde/renos-frontend): React frontend with Vite
 - [Tekup-Billy](https://github.com/JonasAbde/Tekup-Billy): MCP HTTP server integration Already on Supabase
 

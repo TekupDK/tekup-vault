@@ -16,11 +16,13 @@ Usage options:
   SUPABASE_POOLER_HOST=aws-0-eu-central-1.pooler.supabase.com pnpm --filter @tekupvault/vault-api run tools:test-db
 
 Environment variable fallbacks:
+
 - DATABASE_URL (preferred)
 - SUPABASE_DB_URL
 - POSTGRES_URL
 - VAULT_DATABASE_URL
 
 Notes:
+
 - Session Pooler requires user postgres and port 6543.
 - SSL is enabled with rejectUnauthorized=false for convenience; use proper CA in production.

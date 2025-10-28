@@ -1,9 +1,26 @@
-import { config as dotenvConfig } from 'dotenv';
-import { resolve } from 'path';
-import { existsSync } from 'fs';
+import * as Sentry from "@sentry/node";
+import { loadConfig } from "@tekupvault/vault-core";
+import cors from "cors";
+import { config as dotenvConfig } from "dotenv";
+import express from "express";
+import { existsSync } from "fs";
+import helmet from "helmet";
+import { resolve } from "path";
+import pinoHttp from "pino-http";
+import { logger } from "./lib/logger";
+import {
+  handleMcpDelete,
+  handleMcpGet,
+  handleMcpPost,
+} from "./mcp/mcp-transport";
+import { searchLimiter, webhookLimiter } from "./middleware/rateLimit";
+import debugRouter from "./routes/debug";
+import searchRouter from "./routes/search";
+import syncRouter from "./routes/sync";
+import webhooksRouter from "./routes/webhooks";
 
 // Load env: prefer repo root .env, then optionally tekup-secrets shared files (without overriding existing values)
-dotenvConfig({ path: resolve(__dirname, '../../../.env') });
+dotenvConfig({ path: resolve(__dirname, "../../../.env") });
 function loadOptionalEnv(envPath: string): void {
   try {
     if (existsSync(envPath)) {
@@ -13,22 +30,9 @@ function loadOptionalEnv(envPath: string): void {
     // best-effort only
   }
 }
-loadOptionalEnv('c:/Users/empir/Tekup/tekup-secrets/.env.shared');
-loadOptionalEnv('c:/Users/empir/Tekup/tekup-secrets/config/ai-services.env');
-loadOptionalEnv('c:/Users/empir/Tekup/tekup-secrets/config/github.env');
-import * as Sentry from '@sentry/node';
-import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import pinoHttp from 'pino-http';
-import { loadConfig } from '@tekupvault/vault-core';
-import { logger } from './lib/logger';
-import searchRouter from './routes/search';
-import webhooksRouter from './routes/webhooks';
-import syncRouter from './routes/sync';
-import debugRouter from './routes/debug';
-import { searchLimiter, webhookLimiter } from './middleware/rateLimit';
-import { handleMcpPost, handleMcpGet, handleMcpDelete } from './mcp/mcp-transport';
+loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/.env.shared");
+loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/config/ai-services.env");
+loadOptionalEnv("c:/Users/empir/Tekup/tekup-secrets/config/github.env");
 
 const config = loadConfig();
 
@@ -37,15 +41,15 @@ if (config.SENTRY_DSN) {
   Sentry.init({
     dsn: config.SENTRY_DSN,
     environment: config.NODE_ENV,
-    tracesSampleRate: config.NODE_ENV === 'production' ? 0.1 : 1.0,
+    tracesSampleRate: config.NODE_ENV === "production" ? 0.1 : 1.0,
   });
-  logger.info('Sentry error tracking initialized');
+  logger.info("Sentry error tracking initialized");
 }
 
 const app = express();
 
 // Trust proxy for Render.com (Cloudflare CDN)
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Sentry request handler must be the first middleware
 if (config.SENTRY_DSN) {
@@ -55,34 +59,48 @@ if (config.SENTRY_DSN) {
 
 // Security middleware
 // Disable CSP for MCP endpoints and .well-known
-app.use(helmet({
-  contentSecurityPolicy: false
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
 
 // CORS with whitelist
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
-app.use(cors({
-  origin: (_origin, callback) => {
-    if (!allowedOrigins.length) {
-      // Default allow localhost in dev if not configured
-      callback(null, true);
-      return;
-    }
-    if (!_origin) {
-      callback(null, true);
-      return;
-    }
-    if (allowedOrigins.includes(_origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'X-API-Key', 'Mcp-Session-Id', 'Accept', 'Origin', 'User-Agent'],
-  exposedHeaders: ['Mcp-Session-Id']
-}));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin: (_origin, callback) => {
+      if (!allowedOrigins.length) {
+        // Default allow localhost in dev if not configured
+        callback(null, true);
+        return;
+      }
+      if (!_origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.includes(_origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "X-API-Key",
+      "Mcp-Session-Id",
+      "Accept",
+      "Origin",
+      "User-Agent",
+    ],
+    exposedHeaders: ["Mcp-Session-Id"],
+  })
+);
 
 // Logging middleware
 app.use(pinoHttp({ logger }));
@@ -92,86 +110,87 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Root endpoint
-app.get('/', (_req, res) => {
+app.get("/", (_req, res) => {
   res.json({
-    service: 'TekupVault API',
-    version: '0.1.0',
-    status: 'ok',
+    service: "TekupVault API",
+    version: "0.1.0",
+    status: "ok",
     endpoints: {
-      health: '/health',
-      mcp: '/mcp',
-      mcpDiscovery: '/.well-known/mcp.json',
-      api: '/api',
-      documentation: 'https://github.com/JonasAbde/TekupVault'
-    }
+      health: "/health",
+      mcp: "/mcp",
+      mcpDiscovery: "/.well-known/mcp.json",
+      api: "/api",
+      documentation: "https://github.com/JonasAbde/TekupVault",
+    },
   });
 });
 
 // Health check endpoint
-app.get('/health', (_req, res) => {
+app.get("/health", (_req, res) => {
   res.json({
-    status: 'ok',
+    status: "ok",
     timestamp: new Date().toISOString(),
-    service: 'vault-api'
+    service: "vault-api",
   });
 });
 
 // MCP Discovery endpoint
-app.get('/.well-known/mcp.json', (_req, res) => {
+app.get("/.well-known/mcp.json", (_req, res) => {
   res.json({
-    version: '2025-03-26',
-    name: 'TekupVault MCP Server',
-    description: 'Model Context Protocol server for TekupVault - semantic search across documentation, code, logs, and AI outputs',
+    version: "2025-03-26",
+    name: "TekupVault MCP Server",
+    description:
+      "Model Context Protocol server for TekupVault - semantic search across documentation, code, logs, and AI outputs",
     vendor: {
-      name: 'Tekup Portfolio',
-      url: 'https://tekup.dk'
+      name: "Tekup Portfolio",
+      url: "https://tekup.dk",
     },
     endpoints: {
       mcp: {
-        url: '/mcp',
-        transport: 'streamable-http',
-        methods: ['POST', 'GET', 'DELETE'],
+        url: "/mcp",
+        transport: "streamable-http",
+        methods: ["POST", "GET", "DELETE"],
         authentication: {
-          type: 'none',
-          note: 'MCP endpoint is public. Use /api endpoints for authenticated REST API.'
-        }
+          type: "none",
+          note: "MCP endpoint is public. Use /api endpoints for authenticated REST API.",
+        },
       },
       health: {
-        url: '/health',
-        method: 'GET'
-      }
+        url: "/health",
+        method: "GET",
+      },
     },
     capabilities: {
       tools: true,
       resources: false,
       prompts: false,
-      sampling: false
+      sampling: false,
     },
-    protocolVersions: ['2024-11-05', '2025-03-26', '2025-06-18'],
+    protocolVersions: ["2024-11-05", "2025-03-26", "2025-06-18"],
     contact: {
-      url: 'https://github.com/JonasAbde/TekupVault'
-    }
+      url: "https://github.com/JonasAbde/TekupVault",
+    },
   });
 });
 
 // MCP Streamable HTTP Transport endpoints (NO authentication required)
-app.post('/mcp', handleMcpPost);
-app.get('/mcp', handleMcpGet);
-app.delete('/mcp', handleMcpDelete);
+app.post("/mcp", handleMcpPost);
+app.get("/mcp", handleMcpGet);
+app.delete("/mcp", handleMcpDelete);
 
 // Rate limits
-app.use('/api/search', searchLimiter);
-app.use('/webhook', webhookLimiter);
+app.use("/api/search", searchLimiter);
+app.use("/webhook", webhookLimiter);
 
 // API routes
-app.use('/api', searchRouter);
-app.use('/api', syncRouter);
-app.use('/api', debugRouter);
-app.use('/webhook', webhooksRouter);
+app.use("/api", searchRouter);
+app.use("/api", syncRouter);
+app.use("/api", debugRouter);
+app.use("/webhook", webhooksRouter);
 
 // 404 handler
 app.use((_req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).json({ error: "Not found" });
 });
 
 // Sentry error handler must be before other error handlers
@@ -180,30 +199,37 @@ if (config.SENTRY_DSN) {
 }
 
 // Error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  logger.error({ err }, 'Unhandled error');
-  
-  // Capture error in Sentry if configured
-  if (config.SENTRY_DSN) {
-    Sentry.captureException(err);
+app.use(
+  (
+    err: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction
+  ) => {
+    logger.error({ err }, "Unhandled error");
+
+    // Capture error in Sentry if configured
+    if (config.SENTRY_DSN) {
+      Sentry.captureException(err);
+    }
+
+    res.status(500).json({ error: "Internal server error" });
   }
-  
-  res.status(500).json({ error: 'Internal server error' });
-});
+);
 
 // Start server
 const PORT = config.PORT || 3000;
 app.listen(PORT, () => {
-  logger.info({ port: PORT, env: config.NODE_ENV }, 'Vault API server started');
+  logger.info({ port: PORT, env: config.NODE_ENV }, "Vault API server started");
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received, shutting down gracefully");
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
+process.on("SIGINT", () => {
+  logger.info("SIGINT received, shutting down gracefully");
   process.exit(0);
 });
