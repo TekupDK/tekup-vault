@@ -1,26 +1,6 @@
 version: "3.8"
 
 services:
-  postgres:
-    image: ankane/pgvector:latest
-    container_name: tekupvault-postgres
-    environment:
-      POSTGRES_DB: tekupvault
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./supabase/migrations:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - tekupvault
-
   worker:
     build:
       context: .
@@ -29,12 +9,9 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tekupvault
+      DATABASE_URL: postgresql://postgres:Habibie12345%40@db.oaevagdgrasfppbrxbey.supabase.co:5432/postgres
       NODE_ENV: development
       LOCAL_WORKSPACE_PATH: /workspace
-    depends_on:
-      postgres:
-        condition: service_healthy
     networks:
       - tekupvault
     restart: unless-stopped
@@ -43,9 +20,22 @@ services:
         source: c:/Users/empir/Tekup
         target: /workspace
 
-volumes:
-  pgdata:
-    driver: local
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: tekupvault-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:Habibie12345%40@db.oaevagdgrasfppbrxbey.supabase.co:5432/postgres
+      PORT: 3000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    networks:
+      - tekupvault
+    restart: unless-stopped
 
 networks:
   tekupvault:

@@ -1,0 +1,21 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy workspace files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
+COPY apps/vault-api ./apps/vault-api
+COPY tsconfig.json ./
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Expose API port
+EXPOSE 3000
+
+# Start API server with ts-node (development mode)
+CMD ["pnpm", "--filter", "@tekupvault/vault-api", "dev"]
