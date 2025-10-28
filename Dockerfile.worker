@@ -1,0 +1,29 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@8.15.0
+
+# Copy workspace config
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
+COPY tsconfig.json ./
+
+# Copy all packages and apps
+COPY packages ./packages
+COPY apps ./apps
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Bust cache for build step
+ARG CACHE_BUST=1
+
+# Build all packages
+RUN pnpm build
+
+# Set working directory to worker
+WORKDIR /app/apps/vault-worker
+
+# Start the worker
+CMD ["node", "dist/index.js"]
