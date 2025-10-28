@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "tekupvault": {
+      "url": "http://localhost:3001/mcp",
+      "transport": "streamable-http",
+      "version": "2025-03-26",
+      "description": "TekupVault - Semantic search across Tekup Portfolio documentation and code",
+      "enabled": true,
+      "settings": {
+        "defaultLimit": 10,
+        "defaultThreshold": 0.7
+      }
+    }
+  }
+}
+

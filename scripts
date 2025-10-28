@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+
+const http = require('http');
+const https = require('https');
+const { URL } = require('url');
+
+const ZAPIER_URL = 'https://mcp.zapier.com/api/mcp/s/ZmZmNzc4Y2EtN2VlMC00YjQ3LTgwZmQtMjYyNDE0ODU4ZjEwOjJmNjBjMWM5LTVlMjUtNGNkNS04YThlLWE5ZDYzYWMwMjZiNw%3D%3D/mcp';
+const PORT = 3001;
+
+const server = http.createServer((req, res) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Cache-Control');
+  
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+  
+  // Parse Zapier URL
+  const zapierUrl = new URL(ZAPIER_URL);
+  
+  // Proxy to Zapier with HTTP/1.1
+  const options = {
+    hostname: zapierUrl.hostname,
+    port: zapierUrl.port || 443,
+    path: zapierUrl.pathname,
+    method: req.method,
+    headers: {
+      ...req.headers,
+      host: zapierUrl.hostname,
+      'accept': 'text/event-stream',
+      'cache-control': 'no-cache'
+    }
+  };
+  
+  // Force HTTP/1.1
+  delete options.headers['connection'];
+  delete options.headers['upgrade'];
+  
+  const proxyReq = https.request(options, (proxyRes) => {
+    // Copy response headers
+    Object.keys(proxyRes.headers).forEach(key => {
+      res.setHeader(key, proxyRes.headers[key]);
+    });
+    
+    res.writeHead(proxyRes.statusCode);
+    proxyRes.pipe(res);
+  });
+  
+  proxyReq.on('error', (err) => {
+    console.error('Proxy error:', err);
+    res.writeHead(500);
+    res.end('Proxy error');
+  });
+  
+  req.pipe(proxyReq);
+});
+
+server.listen(PORT, () => {
+  console.log(`MCP Proxy server running at http://localhost:${PORT}`);
+  console.log(`Proxying to: ${ZAPIER_URL}`);
+});

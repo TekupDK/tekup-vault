@@ -1,0 +1,23 @@
+{
+  "name": "@tekupvault/vault-ingest",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "@supabase/supabase-js": "^2.39.0",
+    "@tekupvault/vault-core": "workspace:*",
+    "@types/node": "^18.19.0",
+    "pino": "^8.17.2",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+  }
+}

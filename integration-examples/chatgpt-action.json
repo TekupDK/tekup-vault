@@ -1,0 +1,256 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TekupVault Knowledge Search",
+    "description": "Search Tekup Portfolio documentation, code, and knowledge base using semantic search",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local development server"
+    },
+    {
+      "url": "https://tekupvault.onrender.com",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/mcp": {
+      "post": {
+        "operationId": "mcpToolCall",
+        "summary": "Call MCP tools (search_knowledge, get_sync_status, etc.)",
+        "description": "Execute MCP protocol tool calls for searching knowledge base and getting repository information",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jsonrpc": {
+                    "type": "string",
+                    "enum": ["2.0"],
+                    "default": "2.0"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": ["tools/call"],
+                    "description": "MCP method to call"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "enum": [
+                          "search_knowledge",
+                          "get_sync_status",
+                          "list_repositories",
+                          "get_repository_info"
+                        ],
+                        "description": "Tool name to execute"
+                      },
+                      "arguments": {
+                        "type": "object",
+                        "description": "Tool-specific arguments"
+                      }
+                    },
+                    "required": ["name"]
+                  },
+                  "id": {
+                    "type": "number",
+                    "default": 1
+                  }
+                },
+                "required": ["jsonrpc", "method", "params", "id"]
+              },
+              "examples": {
+                "search_example": {
+                  "summary": "Search knowledge base",
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "method": "tools/call",
+                    "params": {
+                      "name": "search_knowledge",
+                      "arguments": {
+                        "query": "How to deploy to Render.com",
+                        "limit": 5,
+                        "threshold": 0.7
+                      }
+                    },
+                    "id": 1
+                  }
+                },
+                "sync_status_example": {
+                  "summary": "Get sync status",
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "method": "tools/call",
+                    "params": {
+                      "name": "get_sync_status",
+                      "arguments": {}
+                    },
+                    "id": 1
+                  }
+                },
+                "list_repos_example": {
+                  "summary": "List repositories",
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "method": "tools/call",
+                    "params": {
+                      "name": "list_repositories",
+                      "arguments": {}
+                    },
+                    "id": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful tool execution",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jsonrpc": {
+                      "type": "string",
+                      "enum": ["2.0"]
+                    },
+                    "id": {
+                      "type": "number"
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "content": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["text"]
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Tool result as formatted JSON string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jsonrpc": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/mcp.json": {
+      "get": {
+        "operationId": "getMcpDiscovery",
+        "summary": "MCP server discovery endpoint",
+        "description": "Get MCP server metadata and capabilities",
+        "responses": {
+          "200": {
+            "description": "MCP server information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "capabilities": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SearchKnowledgeArgs": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language search query"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Maximum number of results"
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.7,
+            "description": "Minimum similarity threshold"
+          },
+          "source": {
+            "type": "string",
+            "enum": ["github", "supabase", "render", "copilot"],
+            "description": "Filter by source type"
+          },
+          "repository": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]+/[a-zA-Z0-9-]+$",
+            "description": "Filter by repository (owner/repo format)"
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  }
+}
+

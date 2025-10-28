@@ -1,0 +1,28 @@
+{
+  "name": "@tekupvault/vault-ingest-local",
+  "version": "0.1.0",
+  "description": "Local filesystem ingestion for TekupVault",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@tekupvault/vault-core": "workspace:*",
+    "@supabase/supabase-js": "^2.39.1",
+    "glob": "^10.3.10",
+    "pg": "^8.11.3",
+    "pino": "^8.17.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/pg": "^8.10.9",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "tekupvault": {
+      "url": "http://localhost:3001/mcp",
+      "description": "TekupVault knowledge search - Search Tekup Portfolio docs and code",
+      "enabled": true,
+      "icon": "📚",
+      "shortcuts": {
+        "search": "@tekupvault search for",
+        "sync": "@tekupvault get sync status",
+        "repos": "@tekupvault list repositories"
+      }
+    }
+  }
+}
+

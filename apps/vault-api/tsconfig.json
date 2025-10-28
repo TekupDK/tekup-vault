@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/mcp/extended-tools.ts",
+    "src/__tests__/extended-tools.test.ts",
+    "src/__tests__/monitoring.test.ts"
+  ],
+  "references": [
+    { "path": "../../packages/vault-core" },
+    { "path": "../../packages/vault-search" }
+  ]
+}
