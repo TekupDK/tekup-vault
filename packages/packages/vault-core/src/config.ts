@@ -59,7 +59,7 @@ export function loadConfig(): Config {
  */
 export const GITHUB_REPOS: Array<{ owner: string; repo: string }> = [
   // Core Production Systems (High Priority)
-  { owner: 'JonasAbde', repo: 'Tekup-Billy' },          // Billy.dk MCP Server - Pushed 2025-10-18
+  { owner: 'TekupDK', repo: 'tekup' },                  // Monorepo: tekup-billy MCP Server (apps/production/tekup-billy) - Migrated 2025-10-31
   { owner: 'JonasAbde', repo: 'renos-backend' },        // RenOS Backend API - Pushed 2025-10-15
   { owner: 'JonasAbde', repo: 'renos-frontend' },       // RenOS Frontend - Pushed 2025-10-17
   { owner: 'JonasAbde', repo: 'TekupVault' },           // Central Knowledge Layer - Pushed 2025-10-17
